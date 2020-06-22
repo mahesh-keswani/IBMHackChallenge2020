@@ -1,3 +1,4 @@
+web: gunicorn wsgi:app
 <html>
 	<head>
 		<meta charset="utf-8">
@@ -23,7 +24,7 @@
             <a class="nav-link" href="/">About</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="http://localhost:5000/evaluate">Evaluate</a>
+            <a class="nav-link" href="/evaluate">Evaluate</a>
           </li>
           <li class="nav-item">
             <a class="nav-link" href="https://github.com/mahesh-keswani/IBMHackChallenge2020">Github</a>
