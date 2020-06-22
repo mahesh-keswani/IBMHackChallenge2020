@@ -31,7 +31,7 @@
             <a class="nav-link" href="/">About</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="http://localhost:5000/evaluate">Evaluate</a>
+            <a class="nav-link" href="/evaluate">Evaluate</a>
           </li>
           <li class="nav-item">
             <a class="nav-link" href="https://github.com/mahesh-keswani/IBMHackChallenge2020">Github</a>
@@ -45,12 +45,13 @@
 
       <div class="container">
 
-     	<form action="http://localhost:5000/show_result" method="post" id="myform">
-		  <div class="form-group">
+     	<form method="post" action="/evaluate">
+		  <div class="form-group" id="myform">
 		    <label for="number" id="heading">Enter number between 144 and 50458</label>
 		    <input type="number" class="form-control" name = "number" placeholder="Enter number" min="144" max="50458" id="number">
+		    <input type="submit" class="btn btn-primary" value="Submit">
 		  </div>
-		    <button type="submit" class="btn btn-primary">Submit</button>
+		    
 		  </form>
 
      </div>
