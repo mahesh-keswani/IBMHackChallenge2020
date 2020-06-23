@@ -12,40 +12,71 @@ def load_model():
 	model.load_weight('wind_turbine_weights_20_6.h5')
 	return model
 
-def fetch_and_normalize_data_and_predict_data(number):
+def fetch_and_normalize_data(number):
 	import pandas as pd
 	from sklearn.preprocessing import MinMaxScaler
 	from sklearn.metrics import mean_squared_error
-	from numpy.random import rand
 
 	print("In fetch_and_normalize_data_and_predict_data")
 	n_steps_in = 144
 	n_steps_out = 72
 	n_features = 6
 
-	df = pd.read_csv('integrated_data.csv')
-	df.drop('end_date', axis = 1, inplace = True)
-	df.drop(['precipMM', 'pressure', 'maxtempC', 'humidity'], axis = 1, inplace = True)
+	df = pd.read_csv('model_data.csv')
 
 	print("Loaded the file")
 	sc = MinMaxScaler()
 	scaled_data = sc.fit_transform(df.values[(number - n_steps_in) : (number + n_steps_out), :])
 
-	scaled_x = scaled_data[:number,  :-1]
+	scaled_x = scaled_data[:n_steps_in,  :-1]
 	scaled_y = scaled_data[-n_steps_out: , -1] 
 	
 	print("scaling done!!!")
+
+	return scaled_x, scaled_y
+
+
+def fetch_last_n_stepsin(record):
+	import pandas as pd
+	from sklearn.preprocessing import MinMaxScaler
+	import numpy as np
+
+	n_steps_in = 144
+	n_steps_out = 72
+	n_features = 6
+
+	df = pd.read_csv('model_data.csv')
+	print("Loaded the file")
+
+	sc_x = MinMaxScaler()
+	data = df.values[-(n_steps_in - 1):, :-1]
+	record = np.array(record)
+	X = np.concatenate( (data, record.reshape(1, record.shape[0]) ), axis = 0)
+
+	return sc_x.fit_transform(X) 
+
+
+def predict_label(x, y = None):
+	n_steps_in = 144
+	n_steps_out = 72
+	n_features = 6
+
 	model = load_model()
 	print("Model loaded!!")
 	yhat = model.predict(scaled_x.reshape(1, n_steps_in, n_features))
 	y_hat_reshaped = yhat.reshape(yhat.shape[1])
-
-	mse = mean_squared_error(y_hat_reshaped, scaled_y)
-	# print("mse",mse)
 	
-	return  y_hat_reshaped, scaled_y, mse
+	return  y_hat_reshaped, y
 
-def create_plot(prediction, true, error):
+# def save_record_to_csv(record):
+# 	import pandas as pd
+
+# 	df = pd.read_csv('model_data.csv')
+# 	df.loc[-1] = record
+
+# 	print('record saved successfully')
+
+def create_plot(prediction, true = None):
 	import plotly
 	import plotly.graph_objects as go
 	import json
@@ -60,19 +91,19 @@ def create_plot(prediction, true, error):
                     opacity=0.8, marker_color='orange'
 	    ))
 
-	fig.add_trace(
-	    go.Scatter(
-	        x=true,
-	        y=list(range(72)),
-	        mode='lines', name='True data',
-                    opacity=0.8, marker_color='blue'
-	    ))
+	if true is not None:
+		fig.add_trace(
+		    go.Scatter(
+		        x=true,
+		        y=list(range(72)),
+		        mode='lines', name='True data',
+	                    opacity=0.8, marker_color='blue'
+		    ))
 
 	fig.show()
 	graphJSON = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
 
 	return graphJSON
-
 
 @app.route('/',methods = ['GET']) 
 def index():
@@ -98,9 +129,30 @@ def evaluate():
 	else:
 		number = int(request.form['number'])
 		print("number", number)
-		prediction, true, error = fetch_and_normalize_data_and_predict_data(number)
-		plot = create_plot(prediction, true, error)
+		scaled_x, scaled_y = fetch_and_normalize_data(number)
+		prediction, true = predict_label(scaled_x, scaled_y)
+
+		plot = create_plot(prediction, true)
 		return render_template('graph.html', plot = plot)
-		
+
+@app.route('/predict', methods = ['GET', 'POST'])
+def predict():
+	if request.method == 'GET':
+		return render_template('prediction.html')
+	else:
+		wind_speed = float(request.form['wind_speed'])
+		tpc = float(request.form['tpc'])
+		wind_d = float(request.form['wind_d'])
+		wind_gust = float(request.form['wind_gust'])
+		dew_point = float(request.form['dew_point'])
+		wind_chill = float(request.form['wind_chill'])
+
+		record = [wind_speed, tpc, wind_d, wind_gust, dew_point, wind_chill]
+		X = fetch_last_n_stepsin(record)
+		prediction, y = predict_label(X)
+
+		plot = create_plot(prediction)
+		return render_template('graph.html', plot = plot)
+
 if __name__ == '__main__':
 	app.run(debug = True)
